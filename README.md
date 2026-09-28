@@ -4,6 +4,8 @@ A small [indecis](https://github.com/Bornholm/indecis) model plays [ViZDoom](htt
 
 Everything is pinned for reproducibility: indecis v0.2.0 release binaries (checksums verified), bekko-embedding-v1-a8m at a fixed Hugging Face revision, ViZDoom 1.3.1, fixed seeds.
 
+[![indecis plays doom - defend the cented](https://img.youtube.com/vi/QVsEgyEuKkM/0.jpg)](https://www.youtube.com/watch?v=QVsEgyEuKkM)
+
 ## How it plays
 
 Every 4 tics (8.75 times per second), the game state becomes a short English text:
@@ -84,6 +86,18 @@ The same model, trained on `defend_the_center` only, in a corridor lined with sh
 | `random` | +41.9 (sd 128.5) | 0.9 |
 
 The text description does not depend on the map, so the model plays as the script would: same scores on 9 episodes out of 10, the tenth differing by a decision that arrived a tic later. Neither reaches the armor: the difficulty is set to the maximum, and nothing in the description tells where the corridor leads.
+
+### What SIMD buys
+
+The same trained model, served by indecis v0.2.0 built three ways, 20 real-time episodes each, server pinned to a performance core:
+
+| Server | Latency p50 | Decisions/s | Skipped slots per episode | Score |
+| --- | --- | --- | --- | --- |
+| pure Go: no SIMD, no assembly (`GOEXPERIMENT=` and `INDECIS_NOASM=1`) | 180 ms | 4.7 | 60 | +2.1 |
+| Go 1.27 portable SIMD only (`INDECIS_NOASM=1`) | 23 ms | 8.8 | 0 | +21.0 |
+| release binary: portable SIMD, AVX2 + FMA and AVX-VNNI kernels | 4.7 ms | 8.8 | 0 | +21.8 |
+
+In pure Go, a decision takes longer than the 114 ms between two slots: the player reacts two slots late, skips 60 slots per episode and scores ten times less. Measured on a single decision outside the game, pure Go takes 256 ms and the full stack 5.1 ms. Raw results: `results/simd-*.json`.
 
 ## What this shows, and what it does not
 
