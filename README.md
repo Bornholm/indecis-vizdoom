@@ -4,7 +4,16 @@ A small [indecis](https://github.com/Bornholm/indecis) model plays [ViZDoom](htt
 
 Everything is pinned for reproducibility: indecis v0.2.0 release binaries (checksums verified), bekko-embedding-v1-a8m at a fixed Hugging Face revision, ViZDoom 1.3.1, fixed seeds.
 
-[![indecis plays doom - defend the cented](https://img.youtube.com/vi/QVsEgyEuKkM/0.jpg)](https://www.youtube.com/watch?v=QVsEgyEuKkM)
+## Demo
+
+**Defend the center**
+
+[![indecis plays doom - defend the center](https://img.youtube.com/vi/QVsEgyEuKkM/0.jpg)](https://www.youtube.com/watch?v=QVsEgyEuKkM)
+
+
+**Deadly corridor**
+
+[![indecis plays doom - deadly corridor](https://img.youtube.com/vi/EwJQimi4GRo/0.jpg)](https://www.youtube.com/watch?v=EwJQimi4GRo)
 
 ## How it plays
 
