@@ -1,0 +1,34 @@
+[
+  {
+    "name": "fire",
+    "kind": "noul",
+    "instructions": "An enemy is lined up with the crosshair, so firing now would hit it."
+  },
+  {
+    "name": "turn",
+    "kind": "choice",
+    "instructions": "Aim at the nearest enemy, close the distance to it, or search for one.",
+    "options": [
+      {
+        "name": "left",
+        "description": "The nearest enemy is to the left of the crosshair, so turn left toward it"
+      },
+      {
+        "name": "right",
+        "description": "The nearest enemy is to the right of the crosshair, so turn right toward it"
+      },
+      {
+        "name": "hold",
+        "description": "The nearest enemy is lined up with the crosshair and close enough, so stop and shoot"
+      },
+      {
+        "name": "advance",
+        "description": "The nearest enemy is lined up with the crosshair but far away, so walk toward it"
+      },
+      {
+        "name": "scan",
+        "description": "No enemy is in sight, so keep turning to search the room"
+      }
+    ]
+  }
+]
