@@ -11,23 +11,31 @@
     "options": [
       {
         "name": "left",
-        "description": "The nearest enemy is to the left of the crosshair, so turn left toward it"
+        "description": "The nearest enemy is well to the left of the crosshair, so turn left toward it"
+      },
+      {
+        "name": "nudge_left",
+        "description": "The nearest enemy is slightly to the left of the crosshair, so turn left a little"
       },
       {
         "name": "right",
-        "description": "The nearest enemy is to the right of the crosshair, so turn right toward it"
+        "description": "The nearest enemy is well to the right of the crosshair, so turn right toward it"
+      },
+      {
+        "name": "nudge_right",
+        "description": "The nearest enemy is slightly to the right of the crosshair, so turn right a little"
       },
       {
         "name": "hold",
-        "description": "The nearest enemy is lined up with the crosshair and close enough, so stop and shoot"
+        "description": "The nearest enemy is lined up with the crosshair and close, so stop and shoot"
       },
       {
         "name": "advance",
-        "description": "The nearest enemy is lined up with the crosshair but far away, so walk toward it"
+        "description": "The nearest enemy is lined up with the crosshair but not close, so walk toward it"
       },
       {
         "name": "scan",
-        "description": "No enemy is in sight, so keep turning to search the room"
+        "description": "No enemy is in sight, so walk and turn to search the room"
       }
     ]
   }

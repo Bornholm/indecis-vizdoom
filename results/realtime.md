@@ -2,7 +2,7 @@ Mode: real time
 
 | Policy | Score | Kills | Decisions/s | Latency p50 | p95 | Skipped slots | Turn choices |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| scripted | +12.8 (sd 6.6) | 13.8 | 8.8 | 0.0 ms | 0.0 ms | 0.0 | advance 2%, hold 14%, left 29%, right 41%, scan 14% |
-| random | +0.9 (sd 1.4) | 1.9 | 8.8 | 0.0 ms | 0.0 ms | 0.0 | advance 19%, hold 20%, left 21%, right 20%, scan 20% |
-| trained | +12.2 (sd 6.1) | 13.2 | 8.8 | 8.5 ms | 21.1 ms | 0.0 | advance 2%, hold 13%, left 29%, right 41%, scan 14% |
-| backbone | +0.9 (sd 1.2) | 1.9 | 8.8 | 8.5 ms | 19.8 ms | 0.0 | hold 89%, left 8%, right 3% |
+| scripted | +21.8 (sd 1.6) | 22.8 | 8.8 | 0.0 ms | 0.0 ms | 0.0 | advance 14%, hold 16%, left 6%, nudge_left 5%, nudge_right 10%, right 20%, scan 30% |
+| random | +0.2 (sd 1.0) | 1.1 | 8.8 | 0.0 ms | 0.0 ms | 0.0 | advance 15%, hold 14%, left 14%, nudge_left 15%, nudge_right 13%, right 15%, scan 14% |
+| trained | +21.8 (sd 1.6) | 22.8 | 8.8 | 6.0 ms | 16.0 ms | 0.0 | advance 14%, hold 16%, left 6%, nudge_left 5%, nudge_right 10%, right 20%, scan 30% |
+| backbone | +5.8 (sd 0.7) | 6.8 | 8.8 | 10.6 ms | 25.7 ms | 0.0 | hold 14%, left 57%, right 29% |

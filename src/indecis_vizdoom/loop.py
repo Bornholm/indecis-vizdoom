@@ -69,7 +69,7 @@ def realtime(game, policy, seed: int, interval: int = 4, on_tic=None) -> Episode
     game.set_seed(seed)
     game.new_episode()
     ep = Episode(seed, 0, 0, 0, 0, 0)
-    action = [0, 0, 0, 0]
+    action = [0.0, 0.0, 0.0]
     info: dict = {"decision": None, "text": "", "latencies": ep.latencies}
     while not game.is_episode_finished():
         obs = observation(game)

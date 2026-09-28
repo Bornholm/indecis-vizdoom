@@ -38,8 +38,11 @@ def test_nearest_enemy_first_and_lined_up():
     assert (d.fire, d.turn) == (True, "hold")
 
 
-def test_far_lined_up_enemy_means_advance():
+def test_lined_up_enemy_not_close_means_advance():
     obs = observe([label("Demon", 155, 10, 900, 0)], 320, (0, 0), 100, 26)
+    assert scripted(obs).turn == "advance"
+    obs = observe([label("Demon", 155, 10, 500, 0)], 320, (0, 0), 100, 26)
+    assert "at mid range" in describe(obs)
     assert scripted(obs).turn == "advance"
 
 
@@ -49,8 +52,15 @@ def test_turn_toward_the_side():
     assert scripted(obs).turn == "right"
 
 
+def test_nudge_when_slightly_off():
+    obs = observe([label("Demon", 140, 10, 500, 0)], 320, (0, 0), 100, 26)
+    assert "slightly to the left" in describe(obs)
+    assert scripted(obs).turn == "nudge_left"
+
+
 def test_buttons():
-    assert buttons(Decision(True, "left")) == [1, 0, 1, 0]
-    assert buttons(Decision(False, "scan")) == [0, 1, 0, 0]
-    assert buttons(Decision(False, "advance")) == [0, 0, 0, 1]
-    assert buttons(Decision(False, "hold")) == [0, 0, 0, 0]
+    assert buttons(Decision(True, "left")) == [-2.5, 1.0, 0.0]
+    assert buttons(Decision(False, "nudge_right")) == [0.5, 0.0, 0.0]
+    assert buttons(Decision(False, "scan")) == [2.0, 0.0, 1.0]
+    assert buttons(Decision(False, "advance")) == [0.0, 0.0, 1.0]
+    assert buttons(Decision(False, "hold")) == [0.0, 0.0, 0.0]

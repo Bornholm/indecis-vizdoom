@@ -62,6 +62,16 @@ class Enemy:
     def far(self) -> bool:
         return self.distance >= DISTANCES[-1][0]
 
+    @property
+    def close(self) -> bool:
+        """"very close" or "close" in the text."""
+        return self.distance < DISTANCES[1][0]
+
+    @property
+    def slightly_off(self) -> bool:
+        """"slightly to the ... of the crosshair" in the text."""
+        return not self.lined_up and abs(self.offset) <= BEARINGS[0][0]
+
     def where(self) -> str:
         if self.lined_up:
             return "lined up with the crosshair"

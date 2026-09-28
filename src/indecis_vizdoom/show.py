@@ -11,7 +11,9 @@ from __future__ import annotations
 import os
 import statistics
 import subprocess
+import tempfile
 import time
+import wave
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
@@ -19,7 +21,9 @@ import pygame  # noqa: E402
 import vizdoom as vzd  # noqa: E402
 
 from . import loop  # noqa: E402
-from .game import make_game, variables  # noqa: E402
+import numpy as np  # noqa: E402
+
+from .game import AUDIO_RATE, make_game, variables  # noqa: E402
 from .questions import TURN_OPTIONS  # noqa: E402
 from .state import is_monster  # noqa: E402
 
@@ -33,11 +37,12 @@ ACCENT = (255, 176, 32)
 GREEN = (80, 220, 120)
 RED = (235, 80, 70)
 BAR_BG = (40, 44, 56)
-FOOTER = "github.com/Bornholm/indecis  ·  github.com/Bornholm/indecis-vizdoom  ·  ViZDoom defend_the_center, real time"
+FOOTER = "github.com/Bornholm/indecis  ·  github.com/Bornholm/indecis-vizdoom  ·  ViZDoom {scenario}, real time"
 
 
 class Display:
-    def __init__(self, title: str, subtitle: str, scale: float, record: str | None) -> None:
+    def __init__(self, title: str, subtitle: str, scale: float, record: str | None, scenario: str) -> None:
+        self.scenario = scenario
         pygame.init()
         pygame.display.set_caption(title)
         self.window = pygame.display.set_mode((int(W * scale), int(H * scale)))
@@ -45,12 +50,19 @@ class Display:
         self.title, self.subtitle = title, subtitle
         font = lambda size, bold=False: pygame.font.SysFont("dejavusans,liberationsans,arial", size, bold=bold)
         self.big, self.mid, self.small, self.mono = font(40, True), font(28), font(24), pygame.font.SysFont("dejavusansmono,monospace", 22)
-        self.ffmpeg = None
+        self.ffmpeg, self.record = None, record
         if record:
+            # Video and game audio are written apart, one tic each per frame,
+            # then muxed in close().
+            self.tmp = tempfile.mkdtemp(prefix="indecis-vizdoom-")
             self.ffmpeg = subprocess.Popen(
                 ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                  "-r", "35", "-i", "-", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                 "-pix_fmt", "yuv420p", record], stdin=subprocess.PIPE)
+                 "-pix_fmt", "yuv420p", os.path.join(self.tmp, "video.mp4")], stdin=subprocess.PIPE)
+            self.audio = wave.open(os.path.join(self.tmp, "audio.wav"), "wb")
+            self.audio.setnchannels(2)
+            self.audio.setsampwidth(2)
+            self.audio.setframerate(AUDIO_RATE)
 
     def text(self, s, font, color, x, y) -> int:
         img = font.render(s, True, color)
@@ -73,13 +85,13 @@ class Display:
     def bar(self, label, p, x, y, width, chosen) -> int:
         color = ACCENT if chosen else DIM
         self.text(label, self.mid, FG if chosen else DIM, x, y)
-        bx, bw = x + 150, width - 250
+        bx, bw = x + 190, width - 280
         pygame.draw.rect(self.canvas, BAR_BG, (bx, y + 8, bw, 22), border_radius=4)
         pygame.draw.rect(self.canvas, color, (bx, y + 8, max(2, int(bw * p)), 22), border_radius=4)
         self.text(f"{p:.0%}", self.small, FG if chosen else DIM, bx + bw + 14, y + 4)
         return y + 44
 
-    def frame(self, state, info: dict) -> bool:
+    def frame(self, state, info: dict, audio=None) -> bool:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 return False
@@ -114,6 +126,7 @@ class Display:
             ("latency", f"{lat[-1]:.1f} ms (median {statistics.median(lat):.1f})" if lat else "-"),
             ("decisions", f"{info.get('decisions_per_second', 0):.1f} per second"),
             ("skipped", str(info.get("skipped", 0))),
+            ("memory", "{:.0f} MB, {:.0f} private".format(*info["memory"]) if info.get("memory") else "-"),
             ("kills", str(info.get("kills", 0))),
             ("health", str(info.get("health", 0))),
             ("episode", info.get("episode", "")),
@@ -124,26 +137,48 @@ class Display:
         # What the model read, under the game.
         y = self.text("What the model reads", self.mid, DIM, 40, GAME_H + 24) + 10
         self.wrapped(info.get("text", ""), self.mid, FG, 40, y, GAME_W - 80)
-        self.text(FOOTER, self.small, DIM, 40, H - 56)
+        self.text(FOOTER.format(scenario=self.scenario), self.small, DIM, 40, H - 56)
         pygame.transform.smoothscale(c, self.window.get_size(), self.window) if self.window.get_size() != (W, H) else self.window.blit(c, (0, 0))
         pygame.display.flip()
         if self.ffmpeg:
             self.ffmpeg.stdin.write(pygame.image.tobytes(c, "RGB"))
+            self.audio.writeframes(tic_audio(audio))
         return True
 
     def close(self) -> None:
         if self.ffmpeg:
             self.ffmpeg.stdin.close()
             self.ffmpeg.wait()
+            self.audio.close()
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", os.path.join(self.tmp, "video.mp4"),
+                            "-i", os.path.join(self.tmp, "audio.wav"), "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                            "-shortest", self.record], check=True)
+            for f in ("video.mp4", "audio.wav"):
+                os.remove(os.path.join(self.tmp, f))
+            os.rmdir(self.tmp)
         pygame.quit()
 
 
+TIC_SAMPLES = AUDIO_RATE // 35
+
+
+def tic_audio(buffer) -> bytes:
+    """Exactly one tic of stereo 16-bit samples: silence when there is no
+    game audio (pauses between episodes)."""
+    out = np.zeros((TIC_SAMPLES, 2), dtype=np.int16)
+    if buffer is not None:
+        a = np.asarray(buffer, dtype=np.int16).reshape(-1, 2)[:TIC_SAMPLES]
+        out[: len(a)] = a
+    return out.tobytes()
+
+
 def show(policy, title: str, subtitle: str, seeds, scenario: str, interval: int = 4,
-         scale: float = 1.0, record: str | None = None) -> None:
+         scale: float = 1.0, record: str | None = None, memory=None) -> None:
     """Plays in real time (loop.realtime), one frame per tic, paced at 35
-    frames per second."""
-    game = make_game(scenario, resolution=vzd.ScreenResolution.RES_1024X576, hud=True)
-    display = Display(title, subtitle, scale, record)
+    frames per second. memory() returns the model server's resident and
+    private memory in MB, sampled once per second."""
+    game = make_game(scenario, resolution=vzd.ScreenResolution.RES_1024X576, hud=True, audio=bool(record))
+    display = Display(title, subtitle, scale, record, scenario)
     try:
         for n, seed in enumerate(seeds, 1):
             episode = f"{n} of {len(seeds)} (seed {seed})"
@@ -152,13 +187,16 @@ def show(policy, title: str, subtitle: str, seeds, scenario: str, interval: int 
             def on_tic(state, info):
                 info["episode"] = episode
                 info["health"] = int(variables(state)["HEALTH"])
+                if memory is not None and clock["tics"] % 35 == 0:
+                    clock["memory"] = memory()
+                info["memory"] = clock.get("memory")
                 clock["last"] = (state, dict(info))
                 # Pace to 35 frames per second; a video frame per tic.
                 clock["tics"] += 1
                 wait = clock["start"] + clock["tics"] / 35 - time.monotonic()
                 if wait > 0 and not record:
                     time.sleep(wait)
-                return display.frame(state, info)
+                return display.frame(state, info, state.audio_buffer if record else None)
 
             loop.realtime(game, policy, seed, interval, on_tic)
             if clock["last"] is None:

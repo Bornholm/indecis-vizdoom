@@ -6,7 +6,7 @@
 #   make model       fine-tunes the backbone on them (a few minutes)
 #   make bench       plays every policy in real time and in lockstep
 #   make show        the game with the model's view and decisions, 1920x1080
-#   make video       the same, recorded to build/indecis-doom.mp4
+#   make video       the same, recorded with sound to build/$(SCENARIO).mp4
 
 INDECIS_VERSION := 0.2.0
 ARCH := $(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
@@ -60,13 +60,14 @@ bench: tools backbone
 	$(PY) play.py bench --episodes $(BENCH_EPISODES) --first-seed 2001 --lockstep --json results/lockstep.json | tee results/lockstep.md
 
 SHOW_EPISODES ?= 3
+SCENARIO ?= defend_the_center
 SHOW_SCALE ?= 1
 
 show: tools
-	uv run --group show python play.py show --policy trained --episodes $(SHOW_EPISODES) --first-seed 2001 --scale $(SHOW_SCALE)
+	uv run --group show python play.py show --scenario $(SCENARIO) --policy trained --episodes $(SHOW_EPISODES) --first-seed 2001 --scale $(SHOW_SCALE)
 
 video: tools
-	uv run --group show python play.py show --policy trained --episodes $(SHOW_EPISODES) --first-seed 2001 --scale $(SHOW_SCALE) --record build/indecis-doom.mp4
+	uv run --group show python play.py show --scenario $(SCENARIO) --policy trained --episodes $(SHOW_EPISODES) --first-seed 2001 --scale $(SHOW_SCALE) --record build/$(SCENARIO).mp4
 
 test:
 	uv run pytest -q

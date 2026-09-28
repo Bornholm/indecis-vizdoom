@@ -29,7 +29,9 @@ def scripted(obs: Observation) -> Decision:
     if nearest is None:
         turn = "scan"
     elif nearest.lined_up:
-        turn = "advance" if nearest.far else "hold"
+        turn = "hold" if nearest.close else "advance"
+    elif nearest.slightly_off:
+        turn = "nudge_" + nearest.side
     else:
         turn = nearest.side
     fire = obs.lined_up

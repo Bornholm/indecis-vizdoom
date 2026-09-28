@@ -63,15 +63,20 @@ def server(args, names):
     if not any(n in ("trained", "backbone") for n in names):
         yield None
         return
-    models = {"doom": args.model, "backbone": args.backbone}
-    with indecis_serve(args.indecis_serve, models, args.addr) as url:
-        yield url
+    models = {}
+    if "trained" in names:
+        models["doom"] = args.model
+    if "backbone" in names:
+        models["backbone"] = args.backbone
+    with indecis_serve(args.indecis_serve, models, args.addr) as served:
+        yield served
 
 
 def run(args, names) -> list[dict]:
     game = make_game(args.scenario)
     results = []
-    with server(args, names) as url:
+    with server(args, names) as served:
+        url = served.url if served else None
         for name in names:
             with open_policy(name, args, url) as p:
                 play = loop.realtime if args.realtime else loop.lockstep
@@ -99,8 +104,9 @@ def show(args) -> None:
 
     seeds = list(range(args.first_seed, args.first_seed + args.episodes))
     title = "indecis plays Doom" if args.policy in ("trained", "backbone") else f"{args.policy} plays Doom"
-    with server(args, [args.policy]) as url, open_policy(args.policy, args, url) as p:
-        run_show(p, title, SUBTITLES[args.policy], seeds, args.scenario, args.interval, args.scale, args.record)
+    with server(args, [args.policy]) as served, open_policy(args.policy, args, served.url if served else None) as p:
+        memory = served.memory if served else None
+        run_show(p, title, SUBTITLES[args.policy], seeds, args.scenario, args.interval, args.scale, args.record, memory)
 
 
 def table(results: list[dict], realtime: bool) -> str:
