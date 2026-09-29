@@ -49,9 +49,10 @@ def lockstep(game, policy, seed: int, interval: int = 4, record=None) -> Episode
     ep = Episode(seed, 0, 0, 0, 0, 0)
     while not game.is_episode_finished():
         obs = observation(game)
-        d, ms = timed(policy, obs)
+        frame = game.get_state().screen_buffer
+        d, ms = timed(policy, obs, frame)
         if record is not None:
-            record(describe(obs), d)
+            record(describe(obs), d, frame)
         ep.latencies.append(ms)
         _count(ep, d)
         game.make_action(buttons(d), interval)
@@ -73,7 +74,7 @@ def realtime(game, policy, seed: int, interval: int = 4, on_tic=None) -> Episode
     info: dict = {"decision": None, "text": "", "latencies": ep.latencies}
     while not game.is_episode_finished():
         obs = observation(game)
-        d, ms = timed(policy, obs)
+        d, ms = timed(policy, obs, game.get_state().screen_buffer)
         ep.latencies.append(ms)
         _count(ep, d)
         delay = int(ms // TIC_MS)

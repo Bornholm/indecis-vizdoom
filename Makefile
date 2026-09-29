@@ -6,6 +6,9 @@
 #   make model       fine-tunes the backbone on them (a few minutes)
 #   make bench       plays every policy in real time and in lockstep
 #   make show        the game with the model's view and decisions, 1920x1080
+#
+# From pixels (needs indecis built from ../indecis, not yet released):
+#   make dev-tools model-pixels bench-pixels video-pixels
 #   make video       the same, recorded with sound to build/$(SCENARIO).mp4
 
 INDECIS_VERSION := 0.2.0
@@ -24,7 +27,7 @@ BENCH_EPISODES ?= 20
 
 PY := uv run python
 
-.PHONY: tools backbone data model bench show video test clean
+.PHONY: tools backbone data model bench show video test clean dev-tools siglip data-pixels model-pixels bench-pixels video-pixels
 
 tools: bin/indecis bin/indecis-serve
 
@@ -72,5 +75,49 @@ video: tools
 test:
 	uv run pytest -q
 
+# --- From pixels ---------------------------------------------------------
+# The image model (SigLIP 2 and a trained spatial head) is not in a release
+# yet: indecis is built from the sibling repository.
+
+INDECIS_SRC ?= ../indecis
+SIGLIP := siglip2-base-patch32-256
+SIGLIP_REVISION := 94dffa8cb1179de3e03f091dbc3917e5d5a9ae84
+SIGLIP_DIR := build/$(SIGLIP)
+PIXEL_TRAIN_EPISODES ?= 60
+PIXEL_TEST_EPISODES ?= 15
+
+dev-tools:
+	mkdir -p bin-dev
+	cd $(INDECIS_SRC) && GOEXPERIMENT=simd CGO_ENABLED=0 go build -o $(CURDIR)/bin-dev/indecis ./cmd/indecis
+	cd $(INDECIS_SRC)/decision && GOEXPERIMENT=simd CGO_ENABLED=0 go build -o $(CURDIR)/bin-dev/indecis-serve ./cmd/indecis-serve
+
+siglip: $(SIGLIP_DIR)/model.safetensors
+
+$(SIGLIP_DIR)/model.safetensors:
+	mkdir -p $(SIGLIP_DIR)
+	for f in config.json model.safetensors tokenizer.json; do \
+		curl -sfL -o $(SIGLIP_DIR)/$$f https://huggingface.co/google/$(SIGLIP)/resolve/$(SIGLIP_REVISION)/$$f; \
+	done
+
+# Frames the scripted policy sees, one decision in three, labeled with its
+# answers; test episodes differ from training ones.
+data-pixels:
+	$(PY) play.py harvest-pixels --episodes $(PIXEL_TRAIN_EPISODES) --first-seed 1 --out build/pixels/train
+	$(PY) play.py harvest-pixels --episodes $(PIXEL_TEST_EPISODES) --first-seed 1001 --out build/pixels/test
+
+model-pixels: siglip
+	bin-dev/indecis train-vision -backbone $(SIGLIP_DIR) -schema model/schema.json \
+		-train build/pixels/train/labels.jsonl -test build/pixels/test/labels.jsonl \
+		-epochs 20 -seed 1 -out build/model-pixels
+
+bench-pixels:
+	mkdir -p results
+	$(PY) play.py bench --policies scripted,trained,pixels --episodes $(BENCH_EPISODES) --first-seed 2001 \
+		--indecis-serve bin-dev/indecis-serve --json results/pixels.json | tee results/pixels.md
+
+video-pixels:
+	uv run --group show python play.py show --policy pixels --episodes $(SHOW_EPISODES) --first-seed 2001 \
+		--indecis-serve bin-dev/indecis-serve --record build/pixels.mp4
+
 clean:
-	rm -rf bin build
+	rm -rf bin bin-dev build

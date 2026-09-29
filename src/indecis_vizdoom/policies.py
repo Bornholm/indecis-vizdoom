@@ -3,10 +3,13 @@ two questions, so that a gap in score comes from the decision alone."""
 
 from __future__ import annotations
 
+import base64
 import http.client
 import json
 import random
+import struct
 import time
+import zlib
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
@@ -72,7 +75,10 @@ class Indecis:
         self.name = f"indecis:{model}"
 
     def decide(self, obs: Observation) -> Decision:
-        body = json.dumps({"model": self.model, "state": describe(obs), "questions": QUESTIONS})
+        return self.ask(describe(obs))
+
+    def ask(self, state) -> Decision:
+        body = json.dumps({"model": self.model, "state": state, "questions": QUESTIONS})
         self.conn.request("POST", "/api/alpha/decisions", body, {"Content-Type": "application/json"})
         res = self.conn.getresponse()
         data = json.loads(res.read())
@@ -85,8 +91,31 @@ class Indecis:
         self.conn.close()
 
 
-def timed(policy, obs: Observation) -> tuple[Decision, float]:
+class Pixels(Indecis):
+    """Sends the raw frame instead of the text: the model sees the game."""
+
+    needs_frame = True
+
+    def decide(self, obs: Observation, frame=None) -> Decision:
+        state = {"image": "data:image/png;base64," + base64.b64encode(png(frame)).decode()}
+        return self.ask(state)
+
+
+def png(rgb) -> bytes:
+    """Encodes an [h, w, 3] uint8 array as PNG, with the standard library
+    only (fast compression: the frame is sent, not stored)."""
+    h, w, _ = rgb.shape
+    raw = b"".join(b"\x00" + rgb[y].tobytes() for y in range(h))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 1)) + chunk(b"IEND", b""))
+
+
+def timed(policy, obs: Observation, frame=None) -> tuple[Decision, float]:
     """Decision and its latency in milliseconds."""
     start = time.perf_counter()
-    d = policy.decide(obs)
+    d = policy.decide(obs, frame) if getattr(policy, "needs_frame", False) else policy.decide(obs)
     return d, (time.perf_counter() - start) * 1000

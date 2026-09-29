@@ -4,3 +4,4 @@ build/
 __pycache__/
 .pytest_cache/
 _vizdoom.ini
+bin-dev/

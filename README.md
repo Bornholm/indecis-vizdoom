@@ -108,6 +108,28 @@ The same trained model, served by indecis v0.2.0 built three ways, 20 real-time 
 
 In pure Go, a decision takes longer than the 114 ms between two slots: the player reacts two slots late, skips 60 slots per episode and scores ten times less. Measured on a single decision outside the game, pure Go takes 256 ms and the full stack 5.1 ms. Raw results: `results/simd-*.json`.
 
+### From pixels
+
+The same questions, answered from the raw frame instead of the text: 320×240 pixels, no HUD, no game data. The [SigLIP 2](https://huggingface.co/google/siglip2-base-patch32-256) image encoder (86M parameters, frozen) turns the frame into 64 patches of 32×32 pixels; a small spatial head, trained with `indecis train-vision` on frames labeled by `scripted`, reads each patch at its position. The image path is not in an indecis release yet: `make dev-tools` builds indecis from `../indecis`.
+
+```bash
+make dev-tools siglip
+make data-pixels     # 6,671 training frames (60 episodes), 1,697 test frames (15 others)
+make model-pixels    # encodes the frames (5 min), trains the head (30 s)
+make bench-pixels
+make video-pixels    # build/pixels.mp4
+```
+
+On the test frames, the head answers `fire` right 90.7% of the time and `turn` (7 options) 79.8%. In play, 10 real-time episodes (seeds 2001 to 2010), September 29, 2026:
+
+| Policy | Input | Score | Kills | Latency p50 | p95 | Skipped slots |
+| --- | --- | --- | --- | --- | --- | --- |
+| `scripted` | game data | +21.5 (sd 1.8) | 22.5 | 0 | 0 | 0 |
+| `trained` | text | +21.6 (sd 2.2) | 22.6 | 7.5 ms | 20.3 ms | 0 |
+| `pixels` | 320×240 frame | +19.7 (sd 0.9) | 20.7 | 74.0 ms | 96.5 ms | 3.4 |
+
+From pixels alone, the model reaches 92% of the script's score. A decision takes 74 ms, image encoding included, inside the 114 ms between two slots; a few slow ones skip a slot. The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
+
 ## What this shows, and what it does not
 
 - The trained model imitates `scripted`, which labels its data. It cannot play better than the script; it answers from text, fast enough to never skip a decision slot.

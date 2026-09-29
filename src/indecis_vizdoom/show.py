@@ -41,8 +41,10 @@ FOOTER = "github.com/Bornholm/indecis  ·  github.com/Bornholm/indecis-vizdoom  
 
 
 class Display:
-    def __init__(self, title: str, subtitle: str, scale: float, record: str | None, scenario: str) -> None:
+    def __init__(self, title: str, subtitle: str, scale: float, record: str | None, scenario: str,
+                 caption: str = "What the model reads", fixed_text: str | None = None) -> None:
         self.scenario = scenario
+        self.caption, self.fixed_text = caption, fixed_text
         pygame.init()
         pygame.display.set_caption(title)
         self.window = pygame.display.set_mode((int(W * scale), int(H * scale)))
@@ -89,7 +91,7 @@ class Display:
         pygame.draw.rect(self.canvas, BAR_BG, (bx, y + 8, bw, 22), border_radius=4)
         pygame.draw.rect(self.canvas, color, (bx, y + 8, max(2, int(bw * p)), 22), border_radius=4)
         self.text(f"{p:.0%}", self.small, FG if chosen else DIM, bx + bw + 14, y + 4)
-        return y + 44
+        return y + 36
 
     def frame(self, state, info: dict, audio=None) -> bool:
         for event in pygame.event.get():
@@ -99,17 +101,22 @@ class Display:
         c.fill(BG)
         if state is not None:
             img = pygame.image.frombuffer(state.screen_buffer.tobytes(), (state.screen_buffer.shape[1], state.screen_buffer.shape[0]), "RGB")
-            sx = GAME_W / img.get_width()
-            c.blit(pygame.transform.smoothscale(img, (GAME_W, GAME_H)), (0, 0))
+            # Fit the height, keep the proportions; small frames are scaled
+            # without smoothing, which keeps Doom's pixels.
+            s = GAME_H / img.get_height()
+            w = int(img.get_width() * s)
+            x0 = (GAME_W - w) // 2
+            scaled = (pygame.transform.scale if img.get_width() < 640 else pygame.transform.smoothscale)(img, (w, GAME_H))
+            c.blit(scaled, (x0, 0))
             for label in state.labels:
                 if is_monster(label.object_name):
                     centre = img.get_width() / 2
                     lined = label.x <= centre <= label.x + label.width
-                    rect = pygame.Rect(label.x * sx, label.y * sx, label.width * sx, label.height * sx)
+                    rect = pygame.Rect(x0 + label.x * s, label.y * s, label.width * s, label.height * s)
                     pygame.draw.rect(c, GREEN if lined else ACCENT, rect, 3)
         # Header, right panel.
         x, width = PANEL_X + 40, W - PANEL_X - 80
-        y = self.text(self.title, self.big, FG, x, 36)
+        y = self.wrapped(self.title, self.big, FG, x, 36, width)
         y = self.wrapped(self.subtitle, self.small, DIM, x, y + 8, width) + 24
         d = info.get("decision")
         y = self.text("fire", self.big, FG, x, y) + 8
@@ -133,11 +140,11 @@ class Display:
         ]
         for k, v in rows:
             self.text(k, self.mid, DIM, x, y)
-            y = self.text(v, self.mid, FG, x + 170, y) + 6
+            y = self.text(v, self.mid, FG, x + 170, y) + 2
         # What the model read, under the game.
-        y = self.text("What the model reads", self.mid, DIM, 40, GAME_H + 24) + 10
-        self.wrapped(info.get("text", ""), self.mid, FG, 40, y, GAME_W - 80)
-        self.text(FOOTER.format(scenario=self.scenario), self.small, DIM, 40, H - 56)
+        y = self.text(self.caption, self.mid, DIM, 40, GAME_H + 24) + 10
+        self.wrapped(self.fixed_text or info.get("text", ""), self.mid, FG, 40, y, GAME_W - 80)
+        self.wrapped(FOOTER.format(scenario=self.scenario), self.small, DIM, 40, H - 90, GAME_W - 80)
         pygame.transform.smoothscale(c, self.window.get_size(), self.window) if self.window.get_size() != (W, H) else self.window.blit(c, (0, 0))
         pygame.display.flip()
         if self.ffmpeg:
@@ -174,11 +181,19 @@ def tic_audio(buffer) -> bytes:
 
 def show(policy, title: str, subtitle: str, seeds, scenario: str, interval: int = 4,
          scale: float = 1.0, record: str | None = None, memory=None) -> None:
+    pixels = getattr(policy, "needs_frame", False)
     """Plays in real time (loop.realtime), one frame per tic, paced at 35
     frames per second. memory() returns the model server's resident and
     private memory in MB, sampled once per second."""
-    game = make_game(scenario, resolution=vzd.ScreenResolution.RES_1024X576, hud=True, audio=bool(record))
-    display = Display(title, subtitle, scale, record, scenario)
+    if pixels:
+        # What the pixel policy was trained on: 320×240, no HUD.
+        game = make_game(scenario, resolution=vzd.ScreenResolution.RES_320X240, audio=bool(record))
+        display = Display(title, subtitle, scale, record, scenario, "What the model sees",
+                          "Only the frame above, 320×240 pixels: no text description, no game data. "
+                          "The boxes are drawn for you; the model does not see them.")
+    else:
+        game = make_game(scenario, resolution=vzd.ScreenResolution.RES_1024X576, hud=True, audio=bool(record))
+        display = Display(title, subtitle, scale, record, scenario)
     try:
         for n, seed in enumerate(seeds, 1):
             episode = f"{n} of {len(seeds)} (seed {seed})"
