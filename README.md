@@ -131,7 +131,7 @@ Each training frame is also used mirrored, left and right swapped: the scripted 
 
 For reference, on 10 episodes at the same resolution, `scripted` scores +21.5 (sd 1.8) and the text model +21.6 (sd 2.2). From pixels alone, the model reaches 97% of the script's score, deciding in 52 ms, image encoding and HTTP included. DAgger (the pixel model plays, the script labels what it sees) kept the test accuracy but lowered the score; mirroring raised the test accuracy by 6 points on `turn` for a gain in play within the noise. Test accuracy on frames the script saw predicts play poorly.
 
-The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
+The server holds 128 MB after startup and about 214 MB under load: learned questions do not load SigLIP's text tower.
 
 ## What this shows, and what it does not
 
