@@ -21,6 +21,7 @@ import vizdoom as vzd  # noqa: E402
 from indecis_vizdoom import loop, policies  # noqa: E402
 from indecis_vizdoom.game import make_game  # noqa: E402
 from indecis_vizdoom.server import indecis_serve  # noqa: E402
+from indecis_vizdoom.state import describe  # noqa: E402
 
 POLICIES = ("scripted", "random", "trained", "backbone", "pixels")
 
@@ -35,7 +36,8 @@ def harvest(args) -> None:
     game = make_game(args.scenario)
     seen: dict[str, dict] = {}
 
-    def record(text, d, frame):
+    def record(obs, d, frame):
+        text = describe(obs)
         if text not in seen:
             seen[text] = {"text": text, "labels": {"fire": d.fire, "turn": d.turn}}
 
@@ -50,29 +52,45 @@ def harvest(args) -> None:
     print(f"{len(seen)} distinct states from {args.episodes} episodes -> {args.out}", file=sys.stderr)
 
 
+# Mirroring an image swaps left and right; the scripted rules are symmetric
+# about the screen center, so the swapped label is exactly the scripted
+# answer on the mirrored frame.
+MIRROR_TURN = {"left": "right", "right": "left", "nudge_left": "nudge_right", "nudge_right": "nudge_left"}
+
+
 def harvest_pixels(args) -> None:
-    """Lockstep episodes played by the scripted policy; every --every-th
-    decision, the frame the pixel policy would see and the scripted answer,
-    in the format of indecis train-vision."""
+    """Lockstep episodes; every --every-th decision, the frame the pixel
+    policy sees and the scripted answer on it, in the format of indecis
+    train-vision. --driver pixels lets the pixel policy play while the
+    script labels (DAgger): the data then covers the situations the model's
+    own mistakes lead to. --mirror adds each frame mirrored."""
     game = make_game(args.scenario, resolution=PIXELS_RESOLUTION)
     frames = os.path.join(args.out, "frames")
     os.makedirs(frames, exist_ok=True)
     n, slot = 0, 0
-    with open(os.path.join(args.out, "labels.jsonl"), "w") as f:
-        def record(text, d, frame):
-            nonlocal n, slot
+
+    def write(f, frame, fire, turn):
+        nonlocal n
+        name = f"frames/{n:06d}.png"
+        with open(os.path.join(args.out, name), "wb") as img:
+            img.write(policies.png(frame))
+        f.write(json.dumps({"image": name, "labels": {"fire": fire, "turn": turn}}) + "\n")
+        n += 1
+
+    with open(os.path.join(args.out, "labels.jsonl"), "w") as f, server(args, [args.driver]) as served:
+        def record(obs, d, frame):
+            nonlocal slot
             slot += 1
             if slot % args.every:
                 return
-            name = f"frames/{n:06d}.png"
-            with open(os.path.join(args.out, name), "wb") as img:
-                img.write(policies.png(frame))
-            f.write(json.dumps({"image": name, "labels": {"fire": d.fire, "turn": d.turn}}) + "\n")
-            n += 1
+            label = policies.scripted(obs)
+            write(f, frame, label.fire, label.turn)
+            if args.mirror:
+                write(f, frame[:, ::-1].copy(), label.fire, MIRROR_TURN.get(label.turn, label.turn))
 
-        policy = policies.Scripted()
-        for seed in range(args.first_seed, args.first_seed + args.episodes):
-            loop.lockstep(game, policy, seed, args.interval, record)
+        with open_policy(args.driver, args, served.url if served else None) as policy:
+            for seed in range(args.first_seed, args.first_seed + args.episodes):
+                loop.lockstep(game, policy, seed, args.interval, record)
     game.close()
     print(f"{n} frames from {args.episodes} episodes -> {args.out}", file=sys.stderr)
 
@@ -105,7 +123,7 @@ def server(args, names):
         models["backbone"] = args.backbone
     if "pixels" in names:
         models["doom-pixels"] = args.pixel_model
-    with indecis_serve(args.indecis_serve, models, args.addr) as served:
+    with indecis_serve(args.indecis_serve, models, args.addr, getattr(args, "threads", 0)) as served:
         yield served
 
 
@@ -173,6 +191,14 @@ def main() -> None:
     hp = sub.add_parser("harvest-pixels", parents=[common])
     hp.add_argument("--out", required=True, help="directory: frames/ and labels.jsonl")
     hp.add_argument("--every", type=int, default=3, help="keep one decision in this many")
+    hp.add_argument("--mirror", action="store_true", help="also write each frame mirrored, left and right swapped")
+    hp.add_argument("--driver", choices=("scripted", "pixels"), default="scripted", help="who plays while the script labels")
+    hp.add_argument("--pixel-model", default="build/model-pixels")
+    hp.add_argument("--indecis-serve", default="bin-dev/indecis-serve")
+    hp.add_argument("--addr", default="127.0.0.1:8090")
+    hp.add_argument("--threads", type=int, default=0)
+    hp.add_argument("--model", default="build/model")
+    hp.add_argument("--backbone", default="build/bekko-embedding-v1-a8m")
     for cmd in ("play", "bench", "show"):
         p = sub.add_parser(cmd, parents=[common])
         p.add_argument("--lockstep", dest="realtime", action="store_false",
@@ -183,6 +209,7 @@ def main() -> None:
         p.add_argument("--indecis-serve", default="bin/indecis-serve")
         p.add_argument("--addr", default="127.0.0.1:8090")
         p.add_argument("--json", help="also write the results to this file")
+        p.add_argument("--threads", type=int, default=0, help="indecis-serve -threads: cores per request (0: its default)")
         if cmd in ("play", "show"):
             p.add_argument("--policy", choices=POLICIES, default="trained")
         if cmd == "show":

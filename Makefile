@@ -99,25 +99,41 @@ $(SIGLIP_DIR)/model.safetensors:
 		curl -sfL -o $(SIGLIP_DIR)/$$f https://huggingface.co/google/$(SIGLIP)/resolve/$(SIGLIP_REVISION)/$$f; \
 	done
 
+# Cores per image in indecis-serve (0: one). Two cores help only when they
+# are both performance cores: unpinned, on a hybrid processor, a second
+# core often lands on an efficiency core and slows every decision.
+PIXEL_THREADS ?= 0
+DAGGER_EPISODES ?= 40
+ROUND ?= 1
+
 # Frames the scripted policy sees, one decision in three, labeled with its
-# answers; test episodes differ from training ones.
+# answers, and their mirror images; test episodes differ from training ones.
 data-pixels:
-	$(PY) play.py harvest-pixels --episodes $(PIXEL_TRAIN_EPISODES) --first-seed 1 --out build/pixels/train
+	$(PY) play.py harvest-pixels --episodes $(PIXEL_TRAIN_EPISODES) --first-seed 1 --mirror --out build/pixels/train
 	$(PY) play.py harvest-pixels --episodes $(PIXEL_TEST_EPISODES) --first-seed 1001 --out build/pixels/test
 
+# DAgger: the current pixel model plays, the script labels what it sees.
+# Measured on 20 episodes, two rounds lowered the score (+17.2 against
+# +19.4): it is kept for experiments, with DAGGER=1 in model-pixels.
+dagger-pixels:
+	$(PY) play.py harvest-pixels --driver pixels --episodes $(DAGGER_EPISODES) --first-seed $$((3000 + 100 * $(ROUND))) \
+		--mirror --threads $(PIXEL_THREADS) --out build/pixels/dagger$(ROUND)
+
+# Trains on every harvested directory; features are cached.
 model-pixels: siglip
 	bin-dev/indecis train-vision -backbone $(SIGLIP_DIR) -schema model/schema.json \
-		-train build/pixels/train/labels.jsonl -test build/pixels/test/labels.jsonl \
+		-train $$(ls build/pixels/train/labels.jsonl $(if $(DAGGER),build/pixels/dagger*/labels.jsonl) 2>/dev/null | paste -sd,) \
+		-test build/pixels/test/labels.jsonl -cache build/pixels/cache \
 		-epochs 20 -seed 1 -out build/model-pixels
 
 bench-pixels:
 	mkdir -p results
 	$(PY) play.py bench --policies scripted,trained,pixels --episodes $(BENCH_EPISODES) --first-seed 2001 \
-		--indecis-serve bin-dev/indecis-serve --json results/pixels.json | tee results/pixels.md
+		--indecis-serve bin-dev/indecis-serve --threads $(PIXEL_THREADS) --json results/pixels.json | tee results/pixels.md
 
 video-pixels:
 	uv run --group show python play.py show --policy pixels --episodes $(SHOW_EPISODES) --first-seed 2001 \
-		--indecis-serve bin-dev/indecis-serve --record build/pixels.mp4
+		--indecis-serve bin-dev/indecis-serve --threads $(PIXEL_THREADS) --record build/pixels.mp4
 
 clean:
 	rm -rf bin bin-dev build

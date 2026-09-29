@@ -47,8 +47,10 @@ class Served:
 
 
 @contextlib.contextmanager
-def indecis_serve(binary: str, models: dict[str, str], addr: str = "127.0.0.1:8090"):
+def indecis_serve(binary: str, models: dict[str, str], addr: str = "127.0.0.1:8090", threads: int = 0):
     args = [binary, "-addr", addr]
+    if threads > 0:
+        args += ["-threads", str(threads)]
     for name, path in models.items():
         args += ["-model", f"{name}={path}"]
     proc = subprocess.Popen(args, stderr=subprocess.DEVNULL)

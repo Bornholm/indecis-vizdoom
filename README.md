@@ -120,15 +120,17 @@ make bench-pixels
 make video-pixels    # build/pixels.mp4
 ```
 
-On the test frames, the head answers `fire` right 90.7% of the time and `turn` (7 options) 79.8%. In play, 10 real-time episodes (seeds 2001 to 2010), September 29, 2026:
+Each training frame is also used mirrored, left and right swapped: the scripted rules are symmetric about the screen center. On the test frames, the head answers `fire` right 92.5% of the time and `turn` (7 options) 85.6% (90.7% and 79.8% without mirroring). In play, 20 real-time episodes (seeds 2001 to 2020), September 29, 2026:
 
 | Policy | Input | Score | Kills | Latency p50 | p95 | Skipped slots |
 | --- | --- | --- | --- | --- | --- | --- |
 | `scripted` | game data | +21.5 (sd 1.8) | 22.5 | 0 | 0 | 0 |
 | `trained` | text | +21.6 (sd 2.2) | 22.6 | 7.5 ms | 20.3 ms | 0 |
-| `pixels` | 320×240 frame | +19.7 (sd 0.9) | 20.7 | 74.0 ms | 96.5 ms | 3.4 |
+| `pixels` | 320×240 frame | +19.4 (sd 2.1) | 20.4 | 72.5 ms | 92.7 ms | 2.0 |
 
-From pixels alone, the model reaches 92% of the script's score. A decision takes 74 ms, image encoding included, inside the 114 ms between two slots; a few slow ones skip a slot. The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
+(`scripted` and `trained`: 10 episodes.) What did not help, on the same 20 episodes: without mirroring, +18.9 (sd 2.8); two rounds of DAgger, where the pixel model plays and the script labels what it sees, +17.2 (sd 2.1), although the test accuracy was the same. Test accuracy on frames the script saw predicts play poorly.
+
+From pixels alone, the model reaches 90% of the script's score. A decision takes 73 ms, image encoding included, inside the 114 ms between two slots; a few slow ones skip a slot. The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
 
 ## What this shows, and what it does not
 

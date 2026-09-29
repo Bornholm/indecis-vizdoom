@@ -52,7 +52,7 @@ def lockstep(game, policy, seed: int, interval: int = 4, record=None) -> Episode
         frame = game.get_state().screen_buffer
         d, ms = timed(policy, obs, frame)
         if record is not None:
-            record(describe(obs), d, frame)
+            record(obs, d, frame)
         ep.latencies.append(ms)
         _count(ep, d)
         game.make_action(buttons(d), interval)
