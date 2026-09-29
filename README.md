@@ -120,17 +120,18 @@ make bench-pixels
 make video-pixels    # build/pixels.mp4
 ```
 
-Each training frame is also used mirrored, left and right swapped: the scripted rules are symmetric about the screen center. On the test frames, the head answers `fire` right 92.5% of the time and `turn` (7 options) 85.6% (90.7% and 79.8% without mirroring). In play, 20 real-time episodes (seeds 2001 to 2020), September 29, 2026:
+Each training frame is also used mirrored, left and right swapped: the scripted rules are symmetric about the screen center. The head reads the patches after 8 of the encoder's 12 layers, and the encoder stops there: a third less compute. On the test frames, it answers `fire` right 92.9% of the time and `turn` (7 options) 85.5%. In play, 20 real-time episodes (seeds 2001 to 2020), September 29, 2026:
 
-| Policy | Input | Score | Kills | Latency p50 | p95 | Skipped slots |
-| --- | --- | --- | --- | --- | --- | --- |
-| `scripted` | game data | +21.5 (sd 1.8) | 22.5 | 0 | 0 | 0 |
-| `trained` | text | +21.6 (sd 2.2) | 22.6 | 7.5 ms | 20.3 ms | 0 |
-| `pixels` | 320×240 frame | +19.4 (sd 2.1) | 20.4 | 72.5 ms | 92.7 ms | 2.0 |
+| Pixel model | Score | Kills | Latency p50 | p95 | Skipped slots |
+| --- | --- | --- | --- | --- | --- |
+| mirrored frames, layer 8 (default) | +20.8 (sd 2.3) | 21.8 | 51.7 ms | 68.4 ms | 0.1 |
+| mirrored frames, last layer | +19.4 (sd 2.1) | 20.4 | 72.5 ms | 92.7 ms | 2.0 |
+| no mirroring, last layer | +18.9 (sd 2.8) | 19.9 | 71.4 ms | 90.7 ms | 1.1 |
+| mirrored frames, two rounds of DAgger, last layer | +17.2 (sd 2.1) | 18.2 | 72.9 ms | 91.3 ms | 1.6 |
 
-(`scripted` and `trained`: 10 episodes.) What did not help, on the same 20 episodes: without mirroring, +18.9 (sd 2.8); two rounds of DAgger, where the pixel model plays and the script labels what it sees, +17.2 (sd 2.1), although the test accuracy was the same. Test accuracy on frames the script saw predicts play poorly.
+For reference, on 10 episodes at the same resolution, `scripted` scores +21.5 (sd 1.8) and the text model +21.6 (sd 2.2). From pixels alone, the model reaches 97% of the script's score, deciding in 52 ms, image encoding and HTTP included. DAgger (the pixel model plays, the script labels what it sees) kept the test accuracy but lowered the score; mirroring raised the test accuracy by 6 points on `turn` for a gain in play within the noise. Test accuracy on frames the script saw predicts play poorly.
 
-From pixels alone, the model reaches 90% of the script's score. A decision takes 73 ms, image encoding included, inside the 114 ms between two slots; a few slow ones skip a slot. The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
+The server holds about 450 MB, most of it SigLIP's text tower, which learned questions do not use.
 
 ## What this shows, and what it does not
 

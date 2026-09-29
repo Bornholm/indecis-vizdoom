@@ -124,7 +124,7 @@ model-pixels: siglip
 	bin-dev/indecis train-vision -backbone $(SIGLIP_DIR) -schema model/schema.json \
 		-train $$(ls build/pixels/train/labels.jsonl $(if $(DAGGER),build/pixels/dagger*/labels.jsonl) 2>/dev/null | paste -sd,) \
 		-test build/pixels/test/labels.jsonl -cache build/pixels/cache \
-		-epochs 20 -seed 1 -out build/model-pixels
+		-layer 8 -epochs 20 -seed 1 -out build/model-pixels
 
 bench-pixels:
 	mkdir -p results
