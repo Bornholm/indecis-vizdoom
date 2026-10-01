@@ -1,0 +1,25 @@
+{
+  "realtime": true,
+  "results": [
+    {
+      "policy": "pixels",
+      "episodes": 20,
+      "score": 21.5,
+      "score_sd": 1.7917941611104422,
+      "kills": 22.5,
+      "decisions_per_second": 8.754753474588483,
+      "latency_p50_ms": 50.92960299225524,
+      "latency_p95_ms": 68.01787501899526,
+      "skipped_per_episode": 0,
+      "turns": {
+        "advance": 0.119,
+        "hold": 0.147,
+        "left": 0.065,
+        "nudge_left": 0.094,
+        "nudge_right": 0.093,
+        "right": 0.205,
+        "scan": 0.277
+      }
+    }
+  ]
+}

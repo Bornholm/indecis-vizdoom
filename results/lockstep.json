@@ -8,8 +8,8 @@
       "score_sd": 1.5852942612451615,
       "kills": 22.75,
       "decisions_per_second": 8.75,
-      "latency_p50_ms": 0.0026850029826164246,
-      "latency_p95_ms": 0.0067820074036717415,
+      "latency_p50_ms": 0.0032470052246935666,
+      "latency_p95_ms": 0.010532996384426951,
       "skipped_per_episode": 0,
       "turns": {
         "advance": 0.137,
@@ -28,8 +28,8 @@
       "score_sd": 1.0052493799000692,
       "kills": 1.15,
       "decisions_per_second": 8.75,
-      "latency_p50_ms": 0.0012139789760112762,
-      "latency_p95_ms": 0.0036749988794326782,
+      "latency_p50_ms": 0.0019380022422410548,
+      "latency_p95_ms": 0.007494993042200804,
       "skipped_per_episode": 0,
       "turns": {
         "advance": 0.149,
@@ -48,8 +48,8 @@
       "score_sd": 1.5852942612451615,
       "kills": 22.75,
       "decisions_per_second": 8.75,
-      "latency_p50_ms": 6.168150983285159,
-      "latency_p95_ms": 17.597734986338764,
+      "latency_p50_ms": 6.212982996657956,
+      "latency_p95_ms": 18.466340996383224,
       "skipped_per_episode": 0,
       "turns": {
         "advance": 0.137,
@@ -68,13 +68,33 @@
       "score_sd": 0.8207826816681233,
       "kills": 6.6,
       "decisions_per_second": 8.75,
-      "latency_p50_ms": 10.222749027889222,
-      "latency_p95_ms": 27.976828045211732,
+      "latency_p50_ms": 10.806837999552954,
+      "latency_p95_ms": 27.13588799815625,
       "skipped_per_episode": 0,
       "turns": {
         "hold": 0.158,
         "left": 0.558,
         "right": 0.284
+      }
+    },
+    {
+      "policy": "pixels",
+      "episodes": 20,
+      "score": 21.85,
+      "score_sd": 2.4767338424456895,
+      "kills": 22.85,
+      "decisions_per_second": 8.75,
+      "latency_p50_ms": 49.6247740011313,
+      "latency_p95_ms": 66.73457400029292,
+      "skipped_per_episode": 0,
+      "turns": {
+        "advance": 0.122,
+        "hold": 0.16,
+        "left": 0.06,
+        "nudge_left": 0.069,
+        "nudge_right": 0.107,
+        "right": 0.205,
+        "scan": 0.278
       }
     }
   ]

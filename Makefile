@@ -1,20 +1,20 @@
-# ViZDoom played by a small indecis model, pinned to indecis v0.2.0.
+# ViZDoom played by a small indecis model, pinned to indecis v0.3.0.
 #
-#   make tools       indecis v0.2.0 release binaries, checksums verified
+#   make tools       indecis v0.3.0 release binaries, checksums verified
 #   make backbone    bekko-embedding-v1-a8m at a pinned revision
 #   make data        training and test states, labeled by the scripted policy
 #   make model       fine-tunes the backbone on them (a few minutes)
 #   make bench       plays every policy in real time and in lockstep
 #   make show        the game with the model's view and decisions, 1920x1080
-#
-# From pixels (needs indecis built from ../indecis, not yet released):
-#   make dev-tools model-pixels bench-pixels video-pixels
 #   make video       the same, recorded with sound to build/$(SCENARIO).mp4
+#
+# From pixels:
+#   make siglip data-pixels model-pixels bench-pixels video-pixels
 
-INDECIS_VERSION := 0.2.0
+INDECIS_VERSION := 0.3.0
 ARCH := $(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-SHA256_amd64 := 0364355e938d4608cf1301cebd0278c5657e9a40cd32001a05f03956062de250
-SHA256_arm64 := 5a5afc2eef0fe4841ba386e150920ae0760ac04e0fb74c566574be9bab1197cf
+SHA256_amd64 := 564385e018bc3efa4851fd6236bce372f746baa3e771270a4107c39bc120591f
+SHA256_arm64 := e5ba1c4e3a2e546aa7aec5250ab929d8c5ab015681ae791228d113298a51af1e
 TARBALL := indecis_$(INDECIS_VERSION)_linux_$(ARCH).tar.gz
 
 BEKKO := bekko-embedding-v1-a8m
@@ -27,7 +27,7 @@ BENCH_EPISODES ?= 20
 
 PY := uv run python
 
-.PHONY: tools backbone data model bench show video test clean dev-tools siglip data-pixels model-pixels bench-pixels video-pixels
+.PHONY: tools backbone data model bench show video test clean siglip data-pixels model-pixels bench-pixels video-pixels
 
 tools: bin/indecis bin/indecis-serve
 
@@ -76,20 +76,13 @@ test:
 	uv run pytest -q
 
 # --- From pixels ---------------------------------------------------------
-# The image model (SigLIP 2 and a trained spatial head) is not in a release
-# yet: indecis is built from the sibling repository.
+# The image model: SigLIP 2 and a spatial head trained on its patches.
 
-INDECIS_SRC ?= ../indecis
 SIGLIP := siglip2-base-patch32-256
 SIGLIP_REVISION := 94dffa8cb1179de3e03f091dbc3917e5d5a9ae84
 SIGLIP_DIR := build/$(SIGLIP)
 PIXEL_TRAIN_EPISODES ?= 60
 PIXEL_TEST_EPISODES ?= 15
-
-dev-tools:
-	mkdir -p bin-dev
-	cd $(INDECIS_SRC) && GOEXPERIMENT=simd CGO_ENABLED=0 go build -o $(CURDIR)/bin-dev/indecis ./cmd/indecis
-	cd $(INDECIS_SRC)/decision && GOEXPERIMENT=simd CGO_ENABLED=0 go build -o $(CURDIR)/bin-dev/indecis-serve ./cmd/indecis-serve
 
 siglip: $(SIGLIP_DIR)/model.safetensors
 
@@ -115,25 +108,25 @@ data-pixels:
 # DAgger: the current pixel model plays, the script labels what it sees.
 # Measured on 20 episodes, two rounds lowered the score (+17.2 against
 # +19.4): it is kept for experiments, with DAGGER=1 in model-pixels.
-dagger-pixels:
+dagger-pixels: tools
 	$(PY) play.py harvest-pixels --driver pixels --episodes $(DAGGER_EPISODES) --first-seed $$((3000 + 100 * $(ROUND))) \
 		--mirror --threads $(PIXEL_THREADS) --out build/pixels/dagger$(ROUND)
 
 # Trains on every harvested directory; features are cached.
-model-pixels: siglip
-	bin-dev/indecis train-vision -backbone $(SIGLIP_DIR) -schema model/schema.json \
+model-pixels: tools siglip
+	bin/indecis train-vision -backbone $(SIGLIP_DIR) -schema model/schema.json \
 		-train $$(ls build/pixels/train/labels.jsonl $(if $(DAGGER),build/pixels/dagger*/labels.jsonl) 2>/dev/null | paste -sd,) \
 		-test build/pixels/test/labels.jsonl -cache build/pixels/cache \
 		-layer 8 -epochs 20 -seed 1 -out build/model-pixels
 
-bench-pixels:
+bench-pixels: tools
 	mkdir -p results
 	$(PY) play.py bench --policies scripted,trained,pixels --episodes $(BENCH_EPISODES) --first-seed 2001 \
-		--indecis-serve bin-dev/indecis-serve --threads $(PIXEL_THREADS) --json results/pixels.json | tee results/pixels.md
+		--threads $(PIXEL_THREADS) --json results/pixels.json | tee results/pixels.md
 
-video-pixels:
+video-pixels: tools
 	uv run --group show python play.py show --policy pixels --episodes $(SHOW_EPISODES) --first-seed 2001 \
-		--indecis-serve bin-dev/indecis-serve --threads $(PIXEL_THREADS) --record build/pixels.mp4
+		--threads $(PIXEL_THREADS) --record build/pixels.mp4
 
 clean:
-	rm -rf bin bin-dev build
+	rm -rf bin build

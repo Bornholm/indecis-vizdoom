@@ -8,8 +8,8 @@
       "score_sd": 1.5852942612451615,
       "kills": 22.75,
       "decisions_per_second": 8.757172560948018,
-      "latency_p50_ms": 0.00249204458668828,
-      "latency_p95_ms": 0.00941404141485691,
+      "latency_p50_ms": 0.00214899773709476,
+      "latency_p95_ms": 0.007590002496726811,
       "skipped_per_episode": 0,
       "turns": {
         "advance": 0.137,
@@ -28,8 +28,8 @@
       "score_sd": 1.0052493799000692,
       "kills": 1.15,
       "decisions_per_second": 8.762048180848387,
-      "latency_p50_ms": 0.0012730015441775322,
-      "latency_p95_ms": 0.004795030690729618,
+      "latency_p50_ms": 0.0017420024960301816,
+      "latency_p95_ms": 0.005222995241638273,
       "skipped_per_episode": 0,
       "turns": {
         "advance": 0.149,
@@ -44,37 +44,57 @@
     {
       "policy": "trained",
       "episodes": 20,
-      "score": 21.75,
-      "score_sd": 1.5852942612451615,
-      "kills": 22.75,
-      "decisions_per_second": 8.75865756199803,
-      "latency_p50_ms": 6.023077992722392,
-      "latency_p95_ms": 16.033780004363507,
+      "score": 21.8,
+      "score_sd": 1.6091841672756186,
+      "kills": 22.8,
+      "decisions_per_second": 8.757791249833804,
+      "latency_p50_ms": 6.812266998167615,
+      "latency_p95_ms": 19.687380001414567,
       "skipped_per_episode": 0,
       "turns": {
-        "advance": 0.138,
-        "hold": 0.157,
-        "left": 0.056,
-        "nudge_left": 0.051,
-        "nudge_right": 0.098,
-        "right": 0.2,
-        "scan": 0.3
+        "advance": 0.135,
+        "hold": 0.159,
+        "left": 0.055,
+        "nudge_left": 0.055,
+        "nudge_right": 0.096,
+        "right": 0.203,
+        "scan": 0.295
       }
     },
     {
       "policy": "backbone",
       "episodes": 20,
-      "score": 5.75,
-      "score_sd": 0.7163503994113789,
-      "kills": 6.75,
-      "decisions_per_second": 8.765734025976386,
-      "latency_p50_ms": 10.578378976788372,
-      "latency_p95_ms": 25.666343979537487,
+      "score": 5.5,
+      "score_sd": 1.2354415362426845,
+      "kills": 6.5,
+      "decisions_per_second": 8.769479176455976,
+      "latency_p50_ms": 12.62491899979068,
+      "latency_p95_ms": 30.89757400448434,
       "skipped_per_episode": 0,
       "turns": {
-        "hold": 0.144,
-        "left": 0.569,
-        "right": 0.287
+        "hold": 0.146,
+        "left": 0.572,
+        "right": 0.283
+      }
+    },
+    {
+      "policy": "pixels",
+      "episodes": 20,
+      "score": 20.95,
+      "score_sd": 1.5381123085406379,
+      "kills": 21.95,
+      "decisions_per_second": 8.758090189530478,
+      "latency_p50_ms": 49.728493999282364,
+      "latency_p95_ms": 67.96367900096811,
+      "skipped_per_episode": 0,
+      "turns": {
+        "advance": 0.131,
+        "hold": 0.145,
+        "left": 0.068,
+        "nudge_left": 0.09,
+        "nudge_right": 0.097,
+        "right": 0.212,
+        "scan": 0.257
       }
     }
   ]

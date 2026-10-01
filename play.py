@@ -147,7 +147,7 @@ def run(args, names) -> list[dict]:
 
 
 SUBTITLES = {
-    "trained": "bekko-embedding-v1-a8m, 7.7M parameters, fine-tuned with indecis v0.2.0. Pure Go, one CPU core, no GPU.",
+    "trained": "bekko-embedding-v1-a8m, 7.7M parameters, fine-tuned with indecis v0.3.0. Pure Go, one CPU core, no GPU.",
     "backbone": "bekko-embedding-v1-a8m without training, in open mode.",
     "scripted": "Hand-written rules: the ceiling the trained model imitates.",
     "random": "Random decisions.",
@@ -194,7 +194,7 @@ def main() -> None:
     hp.add_argument("--mirror", action="store_true", help="also write each frame mirrored, left and right swapped")
     hp.add_argument("--driver", choices=("scripted", "pixels"), default="scripted", help="who plays while the script labels")
     hp.add_argument("--pixel-model", default="build/model-pixels")
-    hp.add_argument("--indecis-serve", default="bin-dev/indecis-serve")
+    hp.add_argument("--indecis-serve", default="bin/indecis-serve")
     hp.add_argument("--addr", default="127.0.0.1:8090")
     hp.add_argument("--threads", type=int, default=0)
     hp.add_argument("--model", default="build/model")
